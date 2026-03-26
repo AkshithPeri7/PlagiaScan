@@ -1,7 +1,5 @@
 # PlagiaScan — Complete VS Code Setup Guide
-### Team: Innovators Hub | H4T-019 | Keerthana P N
-
----
+### Team: Innovators Hub 
 
 ## Project Files
 ```
