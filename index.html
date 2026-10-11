@@ -6,6 +6,8 @@
 <title>PlagiaScan – Code Plagiarism Visualizer</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 /* ══════════════════════════════════════════
    CSS VARIABLES & RESET
@@ -83,7 +85,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
 .auth-logo .logo-text {
   font-size:28px;font-weight:700;letter-spacing:-0.5px;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
 }
 .auth-logo .logo-sub{font-size:12px;color:var(--text-muted);margin-top:4px;font-family:var(--mono);}
 .auth-tabs{display:flex;gap:4px;background:var(--surface2);border-radius:10px;padding:4px;margin-bottom:28px;}
@@ -132,7 +134,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
 .sidebar-logo .logo-name{font-weight:700;font-size:18px;letter-spacing:-0.3px;}
 .sidebar-logo .logo-name span{
   background:linear-gradient(135deg,var(--accent),var(--accent2));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
 }
 .sidebar-nav{flex:1;padding:16px 12px;display:flex;flex-direction:column;gap:4px;}
 .nav-item{
@@ -186,7 +188,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
 }
 .topbar-logo .t-name{font-weight:700;font-size:16px;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
 
 /* PAGE */
 .page{display:none;padding:32px 28px;animation:fadeIn .3s ease;}
@@ -288,7 +290,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
 }
 .stat-card .stat-val{font-size:36px;font-weight:700;
   background:linear-gradient(135deg,var(--accent),var(--accent2));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
 .stat-card .stat-lbl{font-size:12px;color:var(--text-muted);margin-top:4px;}
 .impact-circle{
   width:80px;height:80px;border-radius:50%;
@@ -386,6 +388,33 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
 ::-webkit-scrollbar{width:6px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* VISUALIZER PAGE */
+.visualizer-wrap { max-width:860px; margin: 0 auto; }
+.viz-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 24px;
+}
+.viz-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+}
+.viz-card h3 {
+  font-size: 16px; font-weight: 600; margin-bottom: 20px;
+  text-align: center;
+}
+.chart-container-viz {
+  position: relative;
+  height: 250px;
+}
+
+@media (max-width: 768px) {
+  .viz-grid { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -467,6 +496,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
       <button class="nav-item" onclick="goPage('profile')"><i class="fa-solid fa-user"></i> Profile</button>
       <button class="nav-item" onclick="goPage('history')"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
       <button class="nav-item" onclick="goPage('settings')"><i class="fa-solid fa-gear"></i> Settings</button>
+      <button class="nav-item" onclick="goPage('visualizer')"><i class="fa-solid fa-chart-pie"></i> Visualizer</button>
       <button class="nav-item logout" onclick="doLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
     </div>
     <div class="sidebar-footer">
@@ -516,7 +546,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
           <label class="upload-btn" title="Upload Code File" for="file-upload">
             <i class="fa-solid fa-paperclip"></i>
           </label>
-          <input type="file" id="file-upload" style="display:none;" accept=".py,.js,.java,.c,.cpp,.txt,.html,.css,.cs,.php" onchange="handleFileUpload(event)"/>
+          <input type="file" id="file-upload" style="display:none;" multiple accept=".py,.js,.java,.c,.cpp,.txt,.html,.css,.cs,.php" onchange="handleFileUpload(event)"/>
           <button class="send-btn" id="send-btn" onclick="sendCode()"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
       </div>
@@ -643,6 +673,32 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow-x:h
             <button class="acc-btn delete" onclick="openModal('delete-account')">
               <i class="fa-solid fa-trash"></i> Delete Account
             </button>
+          </div>
+        </div>
+      </div>
+      </div>
+    </div>
+
+    <!-- ── VISUALIZER PAGE ─────────────── -->
+    <div class="page" id="page-visualizer">
+      <div class="visualizer-wrap">
+        <h2 style="font-size:24px;font-weight:700;margin-bottom:8px">Analytics & Visualizer</h2>
+        <p style="color:var(--text-muted);font-size:14px;margin-bottom:20px;">Detailed metrics on your historical checks.</p>
+        
+        <div id="viz-empty" style="display:none; text-align:center; padding: 40px; background:var(--surface); border-radius:16px; border:1px solid var(--border);">
+          <i class="fa-solid fa-chart-pie" style="font-size:40px; color:var(--text-muted); margin-bottom:16px;"></i>
+          <h3 style="font-size:18px; margin-bottom:8px;">No Data Available</h3>
+          <p style="color:var(--text-muted); font-size:14px;">Run some plagiarism checks to visualize your data.</p>
+        </div>
+
+        <div id="viz-charts" class="viz-grid" style="display:none">
+          <div class="viz-card">
+            <h3>Plagiarism Score Trend</h3>
+            <div class="chart-container-viz"><canvas id="viz-line"></canvas></div>
+          </div>
+          <div class="viz-card">
+            <h3>Clean vs Plagiarized</h3>
+            <div class="chart-container-viz"><canvas id="viz-pie"></canvas></div>
           </div>
         </div>
       </div>
@@ -809,6 +865,7 @@ function goPage(pageId) {
   
   if(pageId === 'profile') loadProfile();
   if(pageId === 'history') loadHistory();
+  if(pageId === 'visualizer') loadVisualizer();
 }
 
 function toggleSidebar() {
@@ -1098,7 +1155,7 @@ async function sendCode() {
           <pre style="margin-top:8px;">${escHtml(r.fixed_code)}</pre>`;
       }
 
-      html += `</div>`;
+      html += `<div style="margin-top:16px"><button class="btn-primary" style="padding:8px 16px;font-size:13px;width:100%" onclick="downloadPDF(this)"><i class="fa-solid fa-file-pdf"></i> Download PDF Report</button></div></div>`;
       appendMsg('bot', html);
     }
   } catch(e) {
@@ -1125,19 +1182,122 @@ function copyCode(btn) {
 }
 
 function handleFileUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    document.getElementById('code-input').value = e.target.result;
-    document.getElementById('project-name').value = file.name;
-    document.getElementById('code-input').focus();
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+  
+  let combinedCode = "";
+  let pName = files[0].name;
+  let filesRead = 0;
+  
+  Array.from(files).forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      if(files.length > 1) {
+        combinedCode += `// File: ${file.name}\n${e.target.result}\n\n`;
+        pName = "Multi-file Upload";
+      } else {
+        combinedCode = e.target.result;
+      }
+      
+      filesRead++;
+      if (filesRead === files.length) {
+        document.getElementById('code-input').value = combinedCode;
+        document.getElementById('project-name').value = pName;
+        document.getElementById('code-input').focus();
+      }
+    };
+    reader.onerror = function() {
+      alert("Error reading file: " + file.name);
+    };
+    reader.readAsText(file);
+  });
+  event.target.value = ""; // Reset to allow re-upload
+}
+
+function downloadPDF(btn) {
+  const btnOrig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner" style="border-top-color:#fff"></span> Generating...';
+  // disable the button while generating
+  btn.disabled = true;
+  
+  const element = btn.closest('.msg-bubble');
+  
+  // Clone element to remove buttons before printing
+  const clone = element.cloneNode(true);
+  const buttons = clone.querySelectorAll('button');
+  buttons.forEach(b => b.remove());
+  
+  clone.style.background = '#ffffff'; // force light bg for pdf
+  clone.style.color = '#000000';
+  const preTags = clone.querySelectorAll('pre');
+  preTags.forEach(p => { p.style.background = '#f0f0f0'; p.style.color = '#333'; p.style.border = '1px solid #ccc'; });
+  
+  const opt = {
+    margin:       10,
+    filename:     'PlagiaScan_Report.pdf',
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2 },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
   };
-  reader.onerror = function() {
-    alert("Error reading file.");
-  };
-  reader.readAsText(file);
-  event.target.value = ""; // Reset to allow re-upload of same file
+  
+  html2pdf().set(opt).from(clone).save().then(() => {
+    btn.innerHTML = btnOrig;
+    btn.disabled = false;
+  });
+}
+
+// === VISUALIZER ===
+async function loadVisualizer() {
+  if(!currentUser) return;
+  try {
+    const res = await fetch(`${API}/history/${currentUser.id}`);
+    const data = await res.json();
+    if(data.success && data.history.length > 0) {
+      const dates = data.history.map(h => h.date.split(' ')[0]).reverse();
+      const scores = data.history.map(h => h.score).reverse();
+      
+      let plagCount = 0; let cleanCount = 0;
+      data.history.forEach(h => {
+        if(h.status === 'Plagiarized') plagCount++; else cleanCount++;
+      });
+      
+      document.getElementById('viz-empty').style.display = 'none';
+      document.getElementById('viz-charts').style.display = 'grid';
+      
+      const ctxLine = document.getElementById('viz-line').getContext('2d');
+      if(window.chartLine) window.chartLine.destroy();
+      window.chartLine = new Chart(ctxLine, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{ label: 'Score (%)', data: scores, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.1)', fill: true, tension: 0.3 }]
+        },
+        options: { 
+          responsive: true, maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: '#2a3548' }, ticks: { color: '#64748b' } },
+            y: { grid: { color: '#2a3548' }, ticks: { color: '#64748b' }, beginAtZero: true, max: 100 }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      const ctxPie = document.getElementById('viz-pie').getContext('2d');
+      if(window.chartPie) window.chartPie.destroy();
+      Chart.defaults.color = '#e2e8f0';
+      window.chartPie = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+          labels: ['Plagiarized', 'Clean'],
+          datasets: [{ data: [plagCount, cleanCount], backgroundColor: ['#ef4444', '#10b981'], borderColor: '#111827' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    } else {
+      document.getElementById('viz-empty').style.display = 'block';
+      document.getElementById('viz-charts').style.display = 'none';
+    }
+  } catch(e) { console.error('Visualizer error:', e); }
 }
 </script>
 </body>

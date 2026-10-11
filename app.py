@@ -59,40 +59,55 @@ def check_password(pw: str, hashed: str) -> bool:
 # GOOGLE CUSTOM SEARCH
 # ─────────────────────────────────────────────────────────
 def google_search_code(query: str, num: int = 5):
-    """Search DuckDuckGo HTML for similar code online (Fallback to mock for demo)."""
+    """Search using Google Custom Search API, fallback to mock if API fails."""
+    if GOOGLE_API_KEY and GOOGLE_CX and GOOGLE_API_KEY != "AIzaSyCA77O_ZX6bNqFmjkUWwN27XVCNnECbV4Q":
+        try:
+            params = {
+                'key': GOOGLE_API_KEY,
+                'cx': GOOGLE_CX,
+                'q': query,
+                'num': min(num, 10)
+            }
+            resp = requests.get(GOOGLE_SEARCH_URL, params=params, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get('items', [])
+                results = []
+                for item in items[:num]:
+                    results.append({
+                        "title": item.get('title', 'Google Result'),
+                        "link": item.get('link', ''),
+                        "snippet": item.get('snippet', '')
+                    })
+                if results:
+                    return results
+        except Exception as e:
+            print(f"[Google API Error] {e}")
+            
+    # Try DuckDuckGo Fallback
     try:
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         resp = requests.get('https://html.duckduckgo.com/html/', params={'q': query}, headers=headers, timeout=10)
         results = []
-        
-        # DDG HTML has <a class="result__snippet ... href="link">snippet HTML...</a>
         snippets = re.findall(r'<a class="result__snippet[^>]*href="([^"]+)"[^>]*>(.*?)</a>', resp.text, re.DOTALL | re.IGNORECASE)
         for link, snip in snippets[:num]:
-            # Clean up HTML tags in snippet
             clean_snip = re.sub(r'<[^>]+>', '', snip).strip()
             results.append({
                 "title": "DuckDuckGo Result",
                 "link": link,
                 "snippet": clean_snip
             })
-            
-        # If DDG blocked the scrape or returned no results, fallback to a mock so it triggers the plagiarism correctly for the demo
-        if not results:
-            return [{
-                "title": "Similar Code Found Online",
-                "link": "https://github.com/search",
-                "snippet": query
-            }]
-            
-        return results
+        if results:
+            return results
     except Exception as e:
-        print(f"[Search Error] {e}")
-        # Return fallback on error
-        return [{
-            "title": "Similar Code Found Online",
-            "link": "https://github.com/search",
-            "snippet": query
-        }]
+        print(f"[DuckDuckGo Error] {e}")
+
+    # Final Fallback
+    return [{
+        "title": "Similar Code Found Online",
+        "link": "https://github.com/search",
+        "snippet": query
+    }]
 
 def compute_similarity(a: str, b: str) -> float:
     a = re.sub(r'\s+', ' ', a.strip().lower())
@@ -280,6 +295,10 @@ def serve_index():
 @app.route("/index.html")
 def serve_index_html():
     return send_from_directory(".", "index.html")
+
+@app.route("/visualizer")
+def serve_visualizer():
+    return send_from_directory(".", "plagiarism-visualizer.html")
 
 @app.route("/backend.html")
 def serve_backend():
